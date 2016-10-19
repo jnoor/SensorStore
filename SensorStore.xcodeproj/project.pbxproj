@@ -12,7 +12,6 @@
 		86017AA81D99B796004F5D5D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 86017AA61D99B796004F5D5D /* Main.storyboard */; };
 		86017AAA1D99B796004F5D5D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86017AA91D99B796004F5D5D /* Assets.xcassets */; };
 		86017AAD1D99B796004F5D5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 86017AAB1D99B796004F5D5D /* LaunchScreen.storyboard */; };
-		86017AB91D99D36C004F5D5D /* test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86017AB71D99D36C004F5D5D /* test.cpp */; };
 		86F5DDC31DB57CE1004B42FD /* SensorStore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86F5DDC11DB57CE1004B42FD /* SensorStore.cpp */; };
 		86FA68811D9DAD91005E00D3 /* DataStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86FA687F1D9DAD91005E00D3 /* DataStream.cpp */; };
 		86FA68841D9DADA8005E00D3 /* IndexStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86FA68821D9DADA8005E00D3 /* IndexStream.cpp */; };
@@ -27,8 +26,6 @@
 		86017AAC1D99B796004F5D5D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		86017AAE1D99B796004F5D5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		86017AB41D99B859004F5D5D /* SensorStore-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SensorStore-Bridging-Header.h"; sourceTree = "<group>"; };
-		86017AB71D99D36C004F5D5D /* test.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = test.cpp; sourceTree = "<group>"; };
-		86017AB81D99D36C004F5D5D /* test.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = test.hpp; sourceTree = "<group>"; };
 		86F5DDC11DB57CE1004B42FD /* SensorStore.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SensorStore.cpp; sourceTree = "<group>"; };
 		86F5DDC21DB57CE1004B42FD /* SensorStore.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SensorStore.hpp; sourceTree = "<group>"; };
 		86FA687F1D9DAD91005E00D3 /* DataStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DataStream.cpp; sourceTree = "<group>"; };
@@ -86,18 +83,8 @@
 				86F5DDC21DB57CE1004B42FD /* SensorStore.hpp */,
 				86FA68861D9DADDD005E00D3 /* Index */,
 				86FA68871D9DADE3005E00D3 /* Data */,
-				86FA68851D9DADD8005E00D3 /* misc */,
 			);
 			name = "SS C++";
-			sourceTree = "<group>";
-		};
-		86FA68851D9DADD8005E00D3 /* misc */ = {
-			isa = PBXGroup;
-			children = (
-				86017AB71D99D36C004F5D5D /* test.cpp */,
-				86017AB81D99D36C004F5D5D /* test.hpp */,
-			);
-			name = misc;
 			sourceTree = "<group>";
 		};
 		86FA68861D9DADDD005E00D3 /* Index */ = {
@@ -195,7 +182,6 @@
 				86017AA51D99B796004F5D5D /* ViewController.swift in Sources */,
 				86F5DDC31DB57CE1004B42FD /* SensorStore.cpp in Sources */,
 				86FA68811D9DAD91005E00D3 /* DataStream.cpp in Sources */,
-				86017AB91D99D36C004F5D5D /* test.cpp in Sources */,
 				86FA68841D9DADA8005E00D3 /* IndexStream.cpp in Sources */,
 				86017AA31D99B796004F5D5D /* AppDelegate.swift in Sources */,
 			);

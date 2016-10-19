@@ -53,6 +53,7 @@ int IS_close() {
 //Flush the in-memory buffer to disk
 int flushIndexBuffer() {
     cout << "flushing buffer" << endl;
+    return 0;
     
     //TODO: overhead of opening file over and over to flush buffer?
     //dump buffer

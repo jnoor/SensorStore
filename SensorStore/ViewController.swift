@@ -78,6 +78,7 @@ class ViewController: UIViewController {
     }
     
     func close() {
+        print("close")
         SS_close()
     }
 }

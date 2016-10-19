@@ -16,20 +16,20 @@ using namespace std;
 
 int SS_setup(char * datafilename, char * indexfilename, char * logoffsetfilename) {
     
-    IS_setup(indexfilename);
+//    IS_setup(indexfilename);
     DS_setup(datafilename, logoffsetfilename);
     
     return 0;
 }
 long SS_write(int topic, char * value) {
     long logoffset = DS_write(topic, value);
-    if (logoffset != -1L) {
-        IS_write(topic, logoffset);
-    }
+//    if (logoffset != -1L) {
+//        IS_write(topic, logoffset);
+//    }
     return logoffset;
 }
 int SS_close() {
-    IS_close();
+//    IS_close();
     DS_close();
     return 0;
 }
