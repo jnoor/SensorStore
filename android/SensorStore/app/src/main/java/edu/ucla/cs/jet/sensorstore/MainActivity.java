@@ -1,44 +1,35 @@
 package edu.ucla.cs.jet.sensorstore;
 
-import android.os.Environment;
-import android.support.v7.app.AppCompatActivity;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.widget.TextView;
-
-import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
-
-    // Used to load the 'native-lib' library on application startup.
-    static {
-        System.loadLibrary("native-lib");
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Example of a call to a native method
-        TextView tv = (TextView) findViewById(R.id.sample_text);
-        tv.setText(stringFromJNI());
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+        }
 
-        File sdCard = Environment.getExternalStorageDirectory();
-        File directory = new File(sdCard.getAbsolutePath() + "/SensorStore");
-        directory.mkdirs();
-
-        File logfile = new File(directory, "log");
-        File indexfile = new File(directory, "index");
-        File offsetfile = new File(directory, "offset");
-
-        SensorStoreSetup(logfile.getAbsolutePath(), indexfile.getAbsolutePath(), offsetfile.getAbsolutePath());
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI();
-    public native void SensorStoreSetup(String logfile, String indexfile, String offsetfile);
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        SensorStore ds = new SensorStore();
+        ds.write(0, "Helloooo\n");
+        ds.write(0, "Whats up dawg\n");
+        ds.close();
+
+        Log.i("READALL", ds.readAll());
+    }
 }
