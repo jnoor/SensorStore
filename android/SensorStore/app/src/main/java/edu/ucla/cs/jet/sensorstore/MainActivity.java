@@ -26,10 +26,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         SensorStore ds = new SensorStore();
-        ds.write(0, "Helloooo\n");
-        ds.write(0, "Whats up dawg\n");
+        ds.write(0, "Yo\n");
+        ds.write(0, "Testees\n");
         ds.close();
 
         Log.i("READALL", ds.readAll());
+        Log.i("Offset", Long.toString(ds.offset()));
+        Log.i("READALL2", new String(ds.read(0, ds.offset())));
     }
 }

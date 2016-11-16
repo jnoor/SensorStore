@@ -26,4 +26,5 @@ public class SensorStore {
     public String readAll() {
         return ds.readall();
     }
+    public byte[] read(long start, long end) { return ds.read(start, end);}
 }

@@ -16,8 +16,8 @@ import java.util.Arrays;
  */
 
 public class DataStream {
-    private final int pagesize;
-    private final long logsize;
+    static final int pagesize = 512 * 1024;
+    static final long logsize = 512 * 1024 * 1024;
 
     private File logfile;
     private File log_offset_file;
@@ -26,9 +26,10 @@ public class DataStream {
     private byte [] buffer;
     private int buffer_offset;
 
+    private IndexStream index;
+
     public DataStream() {
-        pagesize = 512 * 1024;
-        logsize = 2 * 1024 * 1024 * 1024;
+        index = new IndexStream();
 
         buffer = new byte[pagesize];
         buffer_offset = 0;
@@ -72,20 +73,23 @@ public class DataStream {
         System.arraycopy(value, 0, buffer, buffer_offset, value.length);
         buffer_offset += value.length;
 
+        index.write(topic, offset, 4 + 4 + value.length);
+
         return offset;
     }
 
     //read offset start and end
-    //TODO: return array of DataEntry as opposed to one fat byte array, requires indexing
+    //TODO: return iterable of DataEntry as opposed to one fat byte array, requires indexing
     public byte[] read(long start, long end) {
         return readFromFileAtPositionOfSize(logfile, start, (int) (end - start));
     }
 
     public void close() {
         flushBuffer();
+        index.flushIndexBuffer();
     }
 
-    //TODO: This is for debugging purposes ONLY
+    //TODO: Remove this! This is for debugging purposes ONLY
     public String readall() {
         return readStringFromFile(logfile);
     }
@@ -94,6 +98,8 @@ public class DataStream {
     //This "saves state"
     private void flushBuffer() {
         Log.d("DataStream", "Flushing buffer");
+
+        index.flushIndexBuffer();
 
         int buffersize = buffer_offset;
 
@@ -104,7 +110,11 @@ public class DataStream {
         buffer_offset = 0;
 
         //update and save log offset
-        log_offset = (log_offset + buffersize) % logsize;
+        log_offset = log_offset + buffersize;
+        if (log_offset > logsize) {
+            log_offset = 0;
+            index.swapRuns();
+        }
         writeLogOffset();
     }
 
