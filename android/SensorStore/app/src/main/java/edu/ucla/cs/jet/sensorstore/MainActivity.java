@@ -8,6 +8,8 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
+import java.util.Iterator;
+
 public class MainActivity extends AppCompatActivity {
 
     @Override
@@ -26,12 +28,19 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         SensorStore ds = new SensorStore();
-        ds.write(0, "Yo\n");
-        ds.write(0, "Testees\n");
+
+        ds.clear();
+
+        ds.write(12, "Yo\n");
+        ds.write(12, "Testees\n");
         ds.close();
 
-        Log.i("READALL", ds.readAll());
         Log.i("Offset", Long.toString(ds.offset()));
-        Log.i("READALL2", new String(ds.read(0, ds.offset())));
+
+        Iterator<DataEntry> it = ds.read(0, ds.offset());
+        while (it.hasNext()) {
+            DataEntry datum = it.next();
+            Log.i("read ", " " + datum.topic + ":" + new String(datum.value));
+        }
     }
 }

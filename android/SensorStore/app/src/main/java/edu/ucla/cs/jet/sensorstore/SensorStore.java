@@ -1,5 +1,7 @@
 package edu.ucla.cs.jet.sensorstore;
 
+import java.util.Iterator;
+
 /**
  * Created by jnoor on 11/10/16.
  */
@@ -14,6 +16,7 @@ public class SensorStore {
         ds = new DataStream();
     }
 
+    public void clear() { ds.clear(); }
     public long write(int topic, String value) {
         return ds.write(topic, value.getBytes());
     }
@@ -23,8 +26,5 @@ public class SensorStore {
     public long offset() {
         return ds.offset();
     }
-    public String readAll() {
-        return ds.readall();
-    }
-    public byte[] read(long start, long end) { return ds.read(start, end);}
+    public Iterator<DataEntry> read(long start, long end) { return ds.read(start, end);}
 }

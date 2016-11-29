@@ -9,7 +9,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created by jnoor on 11/10/16.
@@ -79,19 +82,58 @@ public class DataStream {
     }
 
     //read offset start and end
-    //TODO: return iterable of DataEntry as opposed to one fat byte array, requires indexing
-    public byte[] read(long start, long end) {
-        return readFromFileAtPositionOfSize(logfile, start, (int) (end - start));
+    //TODO: what to do when read crosses circular log threshold point?
+    public Iterator<DataEntry> read(long start, long end) {
+
+        List<DataEntry> result = new ArrayList<DataEntry>();
+        long offset = index.read(start);
+
+        Log.d("DataStream", "Beginning read at offset " + offset);
+
+        if (offset < index.getThreshold() && end > index.getThreshold()) {
+            end = index.getThreshold() - 1;
+        }
+
+        while (offset < end) {
+
+            byte [] topicbuf = readFromFileAtPositionOfSize(logfile, offset, 4);
+            byte [] lenbuf = readFromFileAtPositionOfSize(logfile, offset + 4, 4);
+
+            int topic = ByteBuffer.wrap(topicbuf).getInt();
+            int length = ByteBuffer.wrap(lenbuf).getInt();
+
+            byte [] value = readFromFileAtPositionOfSize(logfile, offset + 8, length);
+
+            result.add(new DataEntry(topic, value));
+
+            offset = offset + 4 + 4 + length;
+        }
+
+        return result.iterator();
     }
 
     public void close() {
         flushBuffer();
-        index.flushIndexBuffer();
+        index.close();
     }
 
-    //TODO: Remove this! This is for debugging purposes ONLY
-    public String readall() {
-        return readStringFromFile(logfile);
+    public void clear() {
+        index.clear();
+
+        Arrays.fill(buffer, (byte) 0);
+        buffer_offset = 0;
+
+        //empty out log file
+        try {
+            FileOutputStream los = new FileOutputStream(logfile, false);
+            los.write(new byte[0]);
+            los.close();
+        } catch (Exception e) {
+
+        }
+
+        log_offset = 0;
+        writeLogOffset();
     }
 
     //Flush in-memory buffer
