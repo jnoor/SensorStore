@@ -17,6 +17,9 @@ import static edu.ucla.cs.jet.sensorstore.DataStream.pagesize;
  * Created by jnoor on 11/16/16.
  */
 
+//TODO: Only one RandomAccessFile per file, try "rwd" or "rws" and see if that allows simulataneous
+//TODO: read/write. Otherwise, just close and reopen the file on every read. I know it sucks.
+
 public class IndexStream {
 
     private File last_run_index_file;
@@ -166,7 +169,7 @@ public class IndexStream {
         if (buffer_offset == 0) {
             return;
         }
-        Log.d("IndexStream", "Flushing buffer");
+//        Log.d("IndexStream", "Flushing buffer");
 
         int buffersize = buffer_offset;
 

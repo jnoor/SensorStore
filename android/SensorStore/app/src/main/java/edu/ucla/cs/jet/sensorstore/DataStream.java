@@ -139,7 +139,7 @@ public class DataStream {
     //Flush in-memory buffer
     //This "saves state"
     private void flushBuffer() {
-        Log.d("DataStream", "Flushing buffer");
+//        Log.d("DataStream", "Flushing buffer");
 
         index.flushIndexBuffer();
 

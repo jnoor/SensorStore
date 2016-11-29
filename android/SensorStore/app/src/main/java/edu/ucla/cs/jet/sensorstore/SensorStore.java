@@ -20,6 +20,9 @@ public class SensorStore {
     public long write(int topic, String value) {
         return ds.write(topic, value.getBytes());
     }
+    public long write(int topic, byte [] value) {
+        return ds.write(topic, value);
+    }
     public void close() {
         ds.close();
     }

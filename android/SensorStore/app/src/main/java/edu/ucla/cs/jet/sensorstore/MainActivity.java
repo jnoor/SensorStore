@@ -8,8 +8,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
-import java.util.Iterator;
-
 public class MainActivity extends AppCompatActivity {
 
     @Override
@@ -31,16 +29,51 @@ public class MainActivity extends AppCompatActivity {
 
         ds.clear();
 
-        ds.write(12, "Yo\n");
-        ds.write(12, "Testees\n");
+        Log.i("info:", "4B overhead in log, 12B overhead in index");
+
+        byte [] xyz = new byte[12];
+        int num = 10000;
+        long starttime = System.currentTimeMillis();
+
+        for (int i=0; i<num; i++) {
+            ds.write(0, xyz);
+        }
+
         ds.close();
 
-        Log.i("Offset", Long.toString(ds.offset()));
+        long endtime = System.currentTimeMillis();
 
-        Iterator<DataEntry> it = ds.read(0, ds.offset());
-        while (it.hasNext()) {
-            DataEntry datum = it.next();
-            Log.i("read ", " " + datum.topic + ":" + new String(datum.value));
+        double latency = (((double)(endtime - starttime)) / 1000);
+        double throughput = 16 * num / latency;
+
+        Log.i("mKafka time", String.valueOf(endtime - starttime));
+        Log.i("mKafka throughput", String.valueOf(throughput) + " Bps");
+
+        MyDB db = new MyDB(getApplicationContext());
+
+        long start = System.currentTimeMillis();
+
+        for (int i=0; i<num; i++) {
+            db.createRecords(256, 1337, 7331, 13);
         }
+
+        long end = System.currentTimeMillis();
+
+        double SQLlatency = (((double)(end - start)) / 1000);
+        double SQLthpt = 16 * num / SQLlatency;
+
+        Log.i("SQLite time", String.valueOf(end - start));
+        Log.i("SQLite throughput", String.valueOf(SQLthpt) + " Bps");
+
+//        ds.write(12, "Yo\n");
+//        ds.write(12, "Testees\n");
+
+        Log.i("Offset", Long.toString(ds.offset()));
+//
+//        Iterator<DataEntry> it = ds.read(0, ds.offset());
+//        while (it.hasNext()) {
+//            DataEntry datum = it.next();
+//            Log.i("read ", " " + datum.topic + ":" + new String(datum.value));
+//        }
     }
 }
