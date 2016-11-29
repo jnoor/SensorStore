@@ -23,6 +23,8 @@ public class DataStream {
     static final long logsize = 512 * 1024 * 1024;
 
     private File logfile;
+    private RandomAccessFile logRAF;
+    private boolean logOpen;
     private File log_offset_file;
     private long log_offset;
 
@@ -43,6 +45,13 @@ public class DataStream {
         directory.mkdirs();
 
         logfile = new File(directory, "log");
+        logOpen = false;
+        try {
+            logRAF = new RandomAccessFile(logfile, "rw");
+            logOpen = true;
+        } catch (Exception e) {
+        }
+
         log_offset_file = new File(directory, "offset");
 
         loadOffset();
@@ -96,13 +105,13 @@ public class DataStream {
 
         while (offset < end) {
 
-            byte [] topicbuf = readFromFileAtPositionOfSize(logfile, offset, 4);
-            byte [] lenbuf = readFromFileAtPositionOfSize(logfile, offset + 4, 4);
+            byte [] topicbuf = logRead(offset, 4);
+            byte [] lenbuf = logRead(offset + 4, 4);
 
             int topic = ByteBuffer.wrap(topicbuf).getInt();
             int length = ByteBuffer.wrap(lenbuf).getInt();
 
-            byte [] value = readFromFileAtPositionOfSize(logfile, offset + 8, length);
+            byte [] value = logRead(offset + 8, length);
 
             result.add(new DataEntry(topic, value));
 
@@ -115,6 +124,11 @@ public class DataStream {
     public void close() {
         flushBuffer();
         index.close();
+        try {
+            logRAF.close();
+            logOpen = false;
+        } catch (Exception e) {
+        }
     }
 
     public void clear() {
@@ -123,14 +137,23 @@ public class DataStream {
         Arrays.fill(buffer, (byte) 0);
         buffer_offset = 0;
 
+        try {
+            logRAF.close();
+            logOpen = false;
+        } catch (Exception e) {}
+
         //empty out log file
         try {
             FileOutputStream los = new FileOutputStream(logfile, false);
             los.write(new byte[0]);
             los.close();
         } catch (Exception e) {
-
         }
+
+        try {
+            logRAF = new RandomAccessFile(logfile, "rw");
+            logOpen = true;
+        } catch (Exception e) {}
 
         log_offset = 0;
         writeLogOffset();
@@ -145,7 +168,7 @@ public class DataStream {
 
         int buffersize = buffer_offset;
 
-        writeBufferWithLengthToPositionInFile(buffer, buffersize, log_offset, logfile);
+        logWrite(buffer, buffersize, log_offset);
 
         //reset in-memory buffer
         Arrays.fill(buffer, (byte) 0);
@@ -164,13 +187,15 @@ public class DataStream {
     //Returns a byte array containing the contents of the file at that position
     //Returns null on failure
     @Nullable
-    private byte[] readFromFileAtPositionOfSize(File file, long offset, int length) {
+    private byte[] logRead(long offset, int length) {
         try {
-            RandomAccessFile f = new RandomAccessFile(file, "r");
+            if (!logOpen) {
+                logRAF = new RandomAccessFile(logfile, "rw");
+                logOpen = true;
+            }
             byte[] buf = new byte[length];
-            f.seek(offset);
-            f.read(buf);
-            f.close();
+            logRAF.seek(offset);
+            logRAF.read(buf);
             return buf;
         } catch (Exception e) {
             return null;
@@ -178,12 +203,14 @@ public class DataStream {
     }
 
     //Writes "length" bytes of buffer "buf" to file "file" at offset "offset"
-    private void writeBufferWithLengthToPositionInFile(byte [] buf, int length, long offset, File file) {
+    private void logWrite(byte [] buf, int length, long offset) {
         try {
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            f.seek(offset);
-            f.write(buf, 0, length);
-            f.close();
+            if (!logOpen) {
+                logRAF = new RandomAccessFile(logfile, "rw");
+                logOpen = true;
+            }
+            logRAF.seek(offset);
+            logRAF.write(buf, 0, length);
         } catch (Exception e) {
             Log.e("DataStream", e.getLocalizedMessage());
         }

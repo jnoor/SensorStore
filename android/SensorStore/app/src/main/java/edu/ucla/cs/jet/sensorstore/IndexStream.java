@@ -25,6 +25,12 @@ public class IndexStream {
     private File last_run_index_file;
     private File current_run_index_file;
 
+    private RandomAccessFile currentRAF;
+    private boolean curIndexOpen;
+
+    private RandomAccessFile lastRAF;
+    private boolean lastIndexOpen;
+
     private File index_threshold_file;
     private long index_threshold;
 
@@ -47,6 +53,14 @@ public class IndexStream {
         current_run_index_file = new File(directory, "indexCurrentRun");
         index_offset_file = new File(directory, "indexOffset");
         index_threshold_file = new File(directory, "indexThreshold");
+
+        curIndexOpen = false;
+        try {
+            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            curIndexOpen = true;
+        } catch (Exception e) {}
+
+        lastIndexOpen = false;
 
         loadIndexOffset();
         loadIndexThreshold();
@@ -117,12 +131,26 @@ public class IndexStream {
 
     public void close() {
         flushIndexBuffer();
+        if (curIndexOpen) {
+            try {
+                currentRAF.close();
+                curIndexOpen = false;
+            } catch (Exception e) {}
+        }
+        if (lastIndexOpen) {
+            try {
+                lastRAF.close();
+                lastIndexOpen = false;
+            } catch (Exception e) {}
+        }
     }
 
     public void clear() {
         //reset in-memory buffer
         Arrays.fill(buffer, (byte) 0);
         buffer_offset = 0;
+
+        close();
 
         //empty out files
         try {
@@ -137,6 +165,11 @@ public class IndexStream {
 
         }
 
+        try {
+            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            curIndexOpen = true;
+        } catch (Exception e) {}
+
         //reset pointers
         index_threshold = 0;
         index_offset = 0;
@@ -147,7 +180,8 @@ public class IndexStream {
 
     //This swaps the current index run for the last index run
     public void swapRuns() {
-        flushIndexBuffer();
+//        flushIndexBuffer();
+        close();
 
         File sdCard = Environment.getExternalStorageDirectory();
         sdCard.mkdirs();
@@ -155,6 +189,11 @@ public class IndexStream {
         directory.mkdirs();
 
         new File(directory, "indexCurrentRun").renameTo(new File(directory, "indexLastRun"));
+
+        try {
+            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            curIndexOpen = true;
+        } catch (Exception e) {}
 
         index_threshold = 0;
         index_offset = 0;
@@ -173,7 +212,7 @@ public class IndexStream {
 
         int buffersize = buffer_offset;
 
-        writeBufferWithLengthToPositionInFile(buffer, buffersize, index_offset, current_run_index_file);
+        writeIndex(buffer, buffersize, index_offset);
 
         //reset in-memory buffer
         Arrays.fill(buffer, (byte) 0);
@@ -239,12 +278,14 @@ public class IndexStream {
     }
 
     //Writes "length" bytes of buffer "buf" to file "file" at offset "offset"
-    private void writeBufferWithLengthToPositionInFile(byte [] buf, int length, long offset, File file) {
+    private void writeIndex(byte [] buf, int length, long offset) {
         try {
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            f.seek(offset);
-            f.write(buf, 0, length);
-            f.close();
+            if (!curIndexOpen) {
+                currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+                curIndexOpen = true;
+            }
+            currentRAF.seek(offset);
+            currentRAF.write(buf, 0, length);
         } catch (Exception e) {
             Log.e("IndexStream", e.getLocalizedMessage());
         }
