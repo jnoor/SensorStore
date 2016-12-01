@@ -3,7 +3,9 @@
 //
 
 #include <iostream>
+#include <android/log.h>
 #include <stdio.h>
+#include <errno.h>
 #include <sys/time.h>
 
 using namespace std;
@@ -30,58 +32,16 @@ const char * logfile;
 const char * offsetfile;
 
 
-void loadOffset(const char * offsetfilename) {
-    offsetfile = offsetfilename;
-
-    FILE* file = fopen(offsetfile, "r+b");
-    if (file == NULL) {
-        //file does not exist, no log offset
-        l_offset = 0L;
-    } else {
-        //read offset into buffer
-        char readBuf[sizeof(long)];
-        fread(readBuf, sizeof(char), sizeof(long), file);
-        fclose(file);
-
-        //read offset from buffer
-        memcpy(&l_offset, readBuf , sizeof(long));
-    }
-
-    cout << "Log offset at " << l_offset << endl;
-}
-
-int writeOffset() {
-    FILE* file = fopen(offsetfile, "wb");
-    if (file == NULL) {
-        //ERROR! Probably OS access issues
-        return -1;
-    }
-
-    //write offset to buffer
-    char buff[sizeof(long)];
-    memcpy(buff, &l_offset, sizeof(long));
-
-    //write buffer to file
-    fwrite(buff, sizeof(char), sizeof(long), file);
-
-    fclose(file);
-
-    return 0;
-}
-
 //SETUP: Call this when you fist initialize the application to point to the proper Log file
 //TODO: We should have a static parameter that will point to it
 //NOTE: OS is restricting file access if we don't pass them in as a parameter
-int DS_setup(const char * logfilename, const char * offsetfilename) {
+int DS_setup(const char * logfilename) {
     logfile = logfilename;
     cout << "logfile: " << logfilename << endl;
 
     //reset buffer
     memset(buffer, 0, pagesize*sizeof(char));
     b_offset = 0;
-
-    //load offsetfile variable
-    loadOffset(offsetfilename);
 
     return 0;
 }
@@ -98,6 +58,7 @@ int DS_close() {
 //Flush the in-memory buffer to disk
 int flushBuffer() {
     cout << "flushing buffer" << endl;
+//    __android_log_print(ANDROID_LOG_INFO, "SensorStore", "%s", "flushing");
 
     //TODO: overhead of opening file over and over to flush buffer?
     //dump buffer
@@ -111,7 +72,7 @@ int flushBuffer() {
     }
 
     //seek to log offset position
-//    fseek(file, l_offset, SEEK_SET);
+    fseek(file, l_offset, SEEK_SET);
 
     //write buffer
     fwrite(buffer, 1, pagesize*sizeof(char), file);
@@ -120,13 +81,11 @@ int flushBuffer() {
     fclose(file);
 
     //reset buffer
-    memset(buffer, 0, pagesize*sizeof(char));
+//    memset(buffer, 0, pagesize*sizeof(char));
     b_offset = 0;
 
     //update log offset
     l_offset = (l_offset + pagesize) % logsize;
-
-    writeOffset();
 
     return 0;
 }
@@ -134,19 +93,22 @@ int flushBuffer() {
 //write the value to the buffer
 //written as: (topic)(value_size)(value)
 //returns: offset: log_offset + buffer_offset
-long DS_write(int topic, char * value) {
+bool DS_write(int topic, const char * value) {
 
     size_t valueSize = strlen(value);
-    size_t size_to_write = sizeof(long) + sizeof(int) + sizeof(size_t) + valueSize;
+    size_t size_to_write = sizeof(int) + sizeof(size_t) + valueSize;
 
     if (size_to_write > pagesize) {
         cout << "too much data at once! Limited to buffer size" << endl;
         return -1;
     }
 
+    bool flushed = false;
+
     if (size_to_write + b_offset >= pagesize) {
         cout << "overflow, flushing..." << endl;
         flushBuffer();
+        flushed = true;
     }
 
     long offset = l_offset + b_offset;
@@ -163,7 +125,7 @@ long DS_write(int topic, char * value) {
     memcpy(buffer + b_offset, value, valueSize);
     b_offset += valueSize;
 
-    return offset;
+    return flushed;
 }
 
 long DS_current_offset() {
