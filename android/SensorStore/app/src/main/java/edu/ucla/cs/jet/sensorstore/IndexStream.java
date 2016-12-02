@@ -5,7 +5,6 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -28,13 +27,8 @@ public class IndexStream {
     private RandomAccessFile currentRAF;
     private boolean curIndexOpen;
 
-    private RandomAccessFile lastRAF;
-    private boolean lastIndexOpen;
-
-    private File index_threshold_file;
     private long index_threshold;
 
-    private File index_offset_file;
     private long index_offset;
 
     private byte [] buffer;
@@ -51,8 +45,6 @@ public class IndexStream {
 
         last_run_index_file = new File(directory, "indexLastRun");
         current_run_index_file = new File(directory, "indexCurrentRun");
-        index_offset_file = new File(directory, "indexOffset");
-        index_threshold_file = new File(directory, "indexThreshold");
 
         curIndexOpen = false;
         try {
@@ -60,27 +52,39 @@ public class IndexStream {
             curIndexOpen = true;
         } catch (Exception e) {}
 
-        lastIndexOpen = false;
-
-        loadIndexOffset();
-        loadIndexThreshold();
+        //TODO: load index_offset, log_offset, index_threshold (= log_offset + last_data_length)
     }
 
     //write the index entry to the buffer
     //written as: (topic)(logoffset)
     //returns: offset => offset into the index file
-    public long write(int topic, long logoffset, int sizewritten) {
-        long offset = index_offset + buffer_offset;
+    public void write(int topic, long logoffset, int sizewritten) {
 
-        System.arraycopy(ByteBuffer.allocate(4).putInt(topic).array(), 0, buffer, buffer_offset, 4);
+        byte[] topicBuf = new byte[] {
+                (byte)(topic >>> 24),
+                (byte)(topic >>> 16),
+                (byte)(topic >>> 8),
+                (byte)(topic)
+        };
+//        byte [] topicBuf = ByteBuffer.allocate(4).putInt(topic).array();
+        System.arraycopy(topicBuf, 0, buffer, buffer_offset, 4);
         buffer_offset += 4;
 
-        System.arraycopy(ByteBuffer.allocate(8).putLong(logoffset).array(), 0, buffer, buffer_offset, 8);
+        byte[] offsetBuf = new byte[] {
+                (byte)(logoffset >>> 56),
+                (byte)(logoffset >>> 48),
+                (byte)(logoffset >>> 40),
+                (byte)(logoffset >>> 32),
+                (byte)(logoffset >>> 24),
+                (byte)(logoffset >>> 16),
+                (byte)(logoffset >>> 8),
+                (byte)(logoffset)
+        };
+//        byte[] offsetBuf = ByteBuffer.allocate(8).putLong(logoffset).array();
+        System.arraycopy(offsetBuf, 0, buffer, buffer_offset, 8);
         buffer_offset += 8;
 
         index_threshold = logoffset + sizewritten;
-
-        return offset;
     }
 
     public long getThreshold() {
@@ -137,12 +141,6 @@ public class IndexStream {
                 curIndexOpen = false;
             } catch (Exception e) {}
         }
-        if (lastIndexOpen) {
-            try {
-                lastRAF.close();
-                lastIndexOpen = false;
-            } catch (Exception e) {}
-        }
     }
 
     public void clear() {
@@ -174,13 +172,10 @@ public class IndexStream {
         index_threshold = 0;
         index_offset = 0;
 
-        writeIndexThreshold();
-        writeIndexOffset();
     }
 
     //This swaps the current index run for the last index run
     public void swapRuns() {
-//        flushIndexBuffer();
         close();
 
         File sdCard = Environment.getExternalStorageDirectory();
@@ -197,31 +192,27 @@ public class IndexStream {
 
         index_threshold = 0;
         index_offset = 0;
-        writeIndexOffset();
-        writeIndexThreshold();
         //TODO: test index swapping runs
     }
 
     //Flush in-memory buffer
     //This "saves state"
     public void flushIndexBuffer() {
-        if (buffer_offset == 0) {
-            return;
+        try {
+            if (!curIndexOpen) {
+                currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+                curIndexOpen = true;
+            }
+            if (currentRAF.getFilePointer() != index_offset) {
+                currentRAF.seek(index_offset);
+            }
+            currentRAF.write(buffer, 0, buffer_offset);
+        } catch (Exception e) {
+            Log.e("IndexStream", e.getLocalizedMessage());
         }
-//        Log.d("IndexStream", "Flushing buffer");
 
-        int buffersize = buffer_offset;
-
-        writeIndex(buffer, buffersize, index_offset);
-
-        //reset in-memory buffer
-        Arrays.fill(buffer, (byte) 0);
+        index_offset = index_offset + buffer_offset;
         buffer_offset = 0;
-
-        //update and save index offset
-        index_offset = index_offset + buffersize;
-        writeIndexOffset();
-        writeIndexThreshold();
     }
 
     //returns the log offset of the first index entry beginning at offset
@@ -274,74 +265,6 @@ public class IndexStream {
             return buf;
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    //Writes "length" bytes of buffer "buf" to file "file" at offset "offset"
-    private void writeIndex(byte [] buf, int length, long offset) {
-        try {
-            if (!curIndexOpen) {
-                currentRAF = new RandomAccessFile(current_run_index_file, "rw");
-                curIndexOpen = true;
-            }
-            currentRAF.seek(offset);
-            currentRAF.write(buf, 0, length);
-        } catch (Exception e) {
-            Log.e("IndexStream", e.getLocalizedMessage());
-        }
-    }
-
-    private void loadIndexThreshold() {
-        String val = readStringFromFile(index_threshold_file);
-        try {
-            index_threshold = Long.valueOf(val);
-        } catch (Exception e) {
-            index_threshold = 0;
-        }
-    }
-
-    private void writeIndexThreshold() {
-        writeStringToFile(String.valueOf(index_threshold), index_threshold_file);
-    }
-
-    //Loads the index offset from the index_offset_file
-    private void loadIndexOffset() {
-        String val = readStringFromFile(index_offset_file);
-        try {
-            index_offset = Long.valueOf(val);
-        } catch (Exception e) {
-            index_offset = 0;
-        }
-    }
-
-    //Saves the index offset to the index_offset_file
-    private void writeIndexOffset() {
-        writeStringToFile(String.valueOf(index_offset), index_offset_file);
-    }
-
-    //This will write a String to the entire file
-    private void writeStringToFile(String data, File file) {
-        try {
-            FileOutputStream stream = new FileOutputStream(file);
-            stream.write(data.getBytes());
-            stream.close();
-        } catch (Exception e) {
-            Log.e("DataStream", e.getLocalizedMessage());
-        }
-    }
-
-    //This will read an entire file into a String and return it
-    private String readStringFromFile(File file) {
-        try {
-            byte[] bytes = new byte[(int) file.length()];
-
-            FileInputStream in = new FileInputStream(file);
-            in.read(bytes);
-            in.close();
-
-            return new String(bytes);
-        } catch (Exception e) {
-            return "";
         }
     }
 }

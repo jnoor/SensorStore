@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
             ds.write(0, xyz);
         }
 
-//        ds.close();
+        ds.close();
 
         long endtime = System.currentTimeMillis();
 

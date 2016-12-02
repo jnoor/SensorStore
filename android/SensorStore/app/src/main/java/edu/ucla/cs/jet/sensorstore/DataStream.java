@@ -5,7 +5,6 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -25,7 +24,6 @@ public class DataStream {
     private File logfile;
     private RandomAccessFile logRAF;
     private boolean logOpen;
-    private File log_offset_file;
     private long log_offset;
 
     private byte [] buffer;
@@ -52,9 +50,6 @@ public class DataStream {
         } catch (Exception e) {
         }
 
-        log_offset_file = new File(directory, "offset");
-
-        loadOffset();
     }
 
     public long offset() {
@@ -64,7 +59,7 @@ public class DataStream {
     //write the value to the buffer
     //written as: (topic)(valuesize)(value)
     //returns: offset => offset into the log file
-    public long write(int topic, byte [] value) {
+    public void write(int topic, byte [] value) {
 
         int size_to_write =  4 + 4 + value.length;
         long offset = log_offset + buffer_offset;
@@ -76,18 +71,30 @@ public class DataStream {
             flushBuffer();
         }
 
-        System.arraycopy(ByteBuffer.allocate(4).putInt(topic).array(), 0, buffer, buffer_offset, 4);
+        byte[] topicBuf = new byte[] {
+                (byte)(topic >>> 24),
+                (byte)(topic >>> 16),
+                (byte)(topic >>> 8),
+                (byte)(topic)
+        };
+//        byte[] topicBuf = ByteBuffer.allocate(4).putInt(topic).array();
+        System.arraycopy(topicBuf, 0, buffer, buffer_offset, 4);
         buffer_offset += 4;
 
-        System.arraycopy(ByteBuffer.allocate(4).putInt(value.length).array(), 0, buffer, buffer_offset, 4);
+        byte[] lenBuf = new byte[] {
+                (byte)(value.length >>> 24),
+                (byte)(value.length >>> 16),
+                (byte)(value.length >>> 8),
+                (byte)(value.length)
+        };
+//        byte[] lenBuf = ByteBuffer.allocate(4).putInt(value.length).array();
+        System.arraycopy(lenBuf, 0, buffer, buffer_offset, 4);
         buffer_offset += 4;
 
         System.arraycopy(value, 0, buffer, buffer_offset, value.length);
         buffer_offset += value.length;
 
-        index.write(topic, offset, 4 + 4 + value.length);
-
-        return offset;
+        index.write(topic, offset, size_to_write);
     }
 
     //read offset start and end
@@ -156,31 +163,35 @@ public class DataStream {
         } catch (Exception e) {}
 
         log_offset = 0;
-        writeLogOffset();
     }
 
     //Flush in-memory buffer
     //This "saves state"
     private void flushBuffer() {
-//        Log.d("DataStream", "Flushing buffer");
-
         index.flushIndexBuffer();
 
-        int buffersize = buffer_offset;
+        try {
+            if (!logOpen) {
+                logRAF = new RandomAccessFile(logfile, "rw");
+                logOpen = true;
+            }
+            if (logRAF.getFilePointer() != log_offset) {
+                logRAF.seek(log_offset);
+            }
+            logRAF.write(buffer, 0, buffer_offset);
+        } catch (Exception e) {
+            Log.e("DataStream", e.getLocalizedMessage());
+        }
 
-        logWrite(buffer, buffersize, log_offset);
+        log_offset = log_offset + buffer_offset;
 
-        //reset in-memory buffer
-        Arrays.fill(buffer, (byte) 0);
-        buffer_offset = 0;
-
-        //update and save log offset
-        log_offset = log_offset + buffersize;
         if (log_offset > logsize) {
             log_offset = 0;
             index.swapRuns();
         }
-        writeLogOffset();
+
+        buffer_offset = 0;
+
     }
 
     //Reads from file "file" at offset "offset" for "length" bytes
@@ -199,61 +210,6 @@ public class DataStream {
             return buf;
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    //Writes "length" bytes of buffer "buf" to file "file" at offset "offset"
-    private void logWrite(byte [] buf, int length, long offset) {
-        try {
-            if (!logOpen) {
-                logRAF = new RandomAccessFile(logfile, "rw");
-                logOpen = true;
-            }
-            logRAF.seek(offset);
-            logRAF.write(buf, 0, length);
-        } catch (Exception e) {
-            Log.e("DataStream", e.getLocalizedMessage());
-        }
-    }
-
-    //Loads the log offset from the log_offset_file
-    private void loadOffset() {
-        String val = readStringFromFile(log_offset_file);
-        try {
-            log_offset = Long.valueOf(val);
-        } catch (Exception e) {
-            log_offset = 0;
-        }
-    }
-
-    //Saves the log offset to the log_offset_file
-    private void writeLogOffset() {
-        writeStringToFile(String.valueOf(log_offset), log_offset_file);
-    }
-
-    //This will write a String to the entire file
-    private void writeStringToFile(String data, File file) {
-        try {
-            FileOutputStream stream = new FileOutputStream(file);
-            stream.write(data.getBytes());
-            stream.close();
-        } catch (Exception e) {
-            Log.e("DataStream", e.getLocalizedMessage());
-        }
-    }
-
-    //This will read an entire file into a String and return it
-    private String readStringFromFile(File file) {
-        try {
-            byte[] bytes = new byte[(int) file.length()];
-
-            FileInputStream in = new FileInputStream(file);
-            in.read(bytes);
-            in.close();
-
-            return new String(bytes);
-        } catch (Exception e) {
-            return "";
         }
     }
 }
