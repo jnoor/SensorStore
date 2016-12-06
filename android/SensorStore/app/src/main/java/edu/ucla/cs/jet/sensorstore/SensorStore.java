@@ -17,8 +17,8 @@ public class SensorStore {
     }
 
     public void clear() { ds.clear(); }
-    public long write(int topic, byte [] value) {
-        return ds.write(topic, value);
+    public void write(int topic, byte [] value) {
+        ds.write(topic, value);
     }
     public void close() {
         ds.close();

@@ -16,9 +16,6 @@ import static edu.ucla.cs.jet.sensorstore.DataStream.pagesize;
  * Created by jnoor on 11/16/16.
  */
 
-//TODO: Only one RandomAccessFile per file, try "rwd" or "rws" and see if that allows simulataneous
-//TODO: read/write. Otherwise, just close and reopen the file on every read. I know it sucks.
-
 public class IndexStream {
 
     private File last_run_index_file;
@@ -48,7 +45,7 @@ public class IndexStream {
 
         curIndexOpen = false;
         try {
-            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            currentRAF = new RandomAccessFile(current_run_index_file, "rwd");
             curIndexOpen = true;
         } catch (Exception e) {}
 
@@ -164,7 +161,7 @@ public class IndexStream {
         }
 
         try {
-            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            currentRAF = new RandomAccessFile(current_run_index_file, "rwd");
             curIndexOpen = true;
         } catch (Exception e) {}
 
@@ -186,7 +183,7 @@ public class IndexStream {
         new File(directory, "indexCurrentRun").renameTo(new File(directory, "indexLastRun"));
 
         try {
-            currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+            currentRAF = new RandomAccessFile(current_run_index_file, "rwd");
             curIndexOpen = true;
         } catch (Exception e) {}
 
@@ -200,7 +197,7 @@ public class IndexStream {
     public void flushIndexBuffer() {
         try {
             if (!curIndexOpen) {
-                currentRAF = new RandomAccessFile(current_run_index_file, "rw");
+                currentRAF = new RandomAccessFile(current_run_index_file, "rwd");
                 curIndexOpen = true;
             }
             if (currentRAF.getFilePointer() != index_offset) {

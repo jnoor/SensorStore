@@ -18,7 +18,7 @@ import java.util.List;
  */
 
 public class DataStream {
-    static final int pagesize = 512 * 1024;
+    static final int pagesize = 8 * 1024 * 1024;
     static final long logsize = 512 * 1024 * 1024;
 
     private File logfile;
@@ -45,7 +45,7 @@ public class DataStream {
         logfile = new File(directory, "log");
         logOpen = false;
         try {
-            logRAF = new RandomAccessFile(logfile, "rw");
+            logRAF = new RandomAccessFile(logfile, "rwd");
             logOpen = true;
         } catch (Exception e) {
         }
@@ -99,6 +99,7 @@ public class DataStream {
 
     //read offset start and end
     //TODO: what to do when read crosses circular log threshold point?
+    //TODO: test and make sure everything is working
     public Iterator<DataEntry> read(long start, long end) {
 
         List<DataEntry> result = new ArrayList<DataEntry>();
@@ -158,7 +159,7 @@ public class DataStream {
         }
 
         try {
-            logRAF = new RandomAccessFile(logfile, "rw");
+            logRAF = new RandomAccessFile(logfile, "rwd");
             logOpen = true;
         } catch (Exception e) {}
 
@@ -172,10 +173,12 @@ public class DataStream {
 
         try {
             if (!logOpen) {
-                logRAF = new RandomAccessFile(logfile, "rw");
+                Log.i("SensorStore", "loading RAF");
+                logRAF = new RandomAccessFile(logfile, "rwd");
                 logOpen = true;
             }
             if (logRAF.getFilePointer() != log_offset) {
+                Log.i("SensorStore", "Seeking!!");
                 logRAF.seek(log_offset);
             }
             logRAF.write(buffer, 0, buffer_offset);
@@ -201,7 +204,7 @@ public class DataStream {
     private byte[] logRead(long offset, int length) {
         try {
             if (!logOpen) {
-                logRAF = new RandomAccessFile(logfile, "rw");
+                logRAF = new RandomAccessFile(logfile, "rwd");
                 logOpen = true;
             }
             byte[] buf = new byte[length];

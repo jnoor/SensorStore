@@ -16,12 +16,12 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 2;
 
     // Database creation sql statement
-    private static final String DATABASE_CREATE = "create table BasicTable" +
-            "( _id integer primary key autoincrement, " +
+    private static final String DATABASE_CREATE = "create table BasicTable (" +
+            "_id integer not null, " +
             "topic integer not null," +
-            "x integer not null, " +
-            "y integer not null, " +
-            "z integer not null);";
+            "value varchar(255) not null," +
+            "primary key (_id, topic)" +
+            ");";
 
     public MyDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
