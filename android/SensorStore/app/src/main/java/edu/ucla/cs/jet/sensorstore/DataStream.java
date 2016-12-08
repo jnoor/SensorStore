@@ -50,6 +50,7 @@ public class DataStream {
         } catch (Exception e) {
         }
 
+        loadOffset(index.loadOffset());
     }
 
     public long offset() {
@@ -195,6 +196,33 @@ public class DataStream {
 
         buffer_offset = 0;
 
+    }
+
+    //this uses the offset of the last data entry from the index to:
+    // a) load the log_offset, and
+    // b) set the index threshold
+    private void loadOffset(long lastentryoffset) {
+        try {
+            if (!logOpen) {
+                logRAF = new RandomAccessFile(logfile, "rwd");
+                logOpen = true;
+            }
+            byte [] lengthbuf = new byte[4];
+            logRAF.seek(lastentryoffset + 4);
+            logRAF.read(lengthbuf);
+
+            int length = ByteBuffer.wrap(lengthbuf).getInt();
+
+            //offset is last data entry offset + topic + value.length + value
+            log_offset = lastentryoffset + 4 + 4 + length;
+
+            //set index threshold
+            index.setThreshold(log_offset);
+
+        } catch (Exception e) {
+            Log.d("DataStream ERROR", e.getLocalizedMessage());
+            return;
+        }
     }
 
     //Reads from file "file" at offset "offset" for "length" bytes

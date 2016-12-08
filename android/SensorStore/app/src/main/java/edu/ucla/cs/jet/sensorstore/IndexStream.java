@@ -49,7 +49,7 @@ public class IndexStream {
             curIndexOpen = true;
         } catch (Exception e) {}
 
-        //TODO: load index_offset, log_offset, index_threshold (= log_offset + last_data_length)
+        //TODO: test index_offset, log_offset, index_threshold
     }
 
     //write the index entry to the buffer
@@ -86,6 +86,9 @@ public class IndexStream {
 
     public long getThreshold() {
         return index_threshold;
+    }
+    public void setThreshold(long thresh) {
+        index_threshold = thresh;
     }
 
     //returns the data entry offset that begins at the soonest position from logoffset
@@ -210,6 +213,32 @@ public class IndexStream {
 
         index_offset = index_offset + buffer_offset;
         buffer_offset = 0;
+    }
+
+    //This will load index_offset into memory and return the offset of the last data entry.
+    public long loadOffset() {
+        try {
+            if (!curIndexOpen) {
+                currentRAF = new RandomAccessFile(current_run_index_file, "rwd");
+                curIndexOpen = true;
+            }
+
+            //seek to last index entry
+            index_offset = current_run_index_file.length();
+            if (index_offset > 12) {
+                currentRAF.seek(index_offset - 8);
+            }
+
+            //read last entry
+            byte [] lastentry = new byte[8];
+            currentRAF.read(lastentry);
+
+            //parse last entry
+            long firstoffset = ByteBuffer.wrap(lastentry).getLong();
+            return firstoffset;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     //returns the log offset of the first index entry beginning at offset
