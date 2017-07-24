@@ -30,11 +30,33 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            runBenchmark();
+        }
+    }
 
-        final int bytesPerWrite = 4096;
-        final long num = 12 * 10000000 / bytesPerWrite;
+    public void runBenchmark() {
 
+        for (int bytesPerWrite = 16; bytesPerWrite < 1024 * 1024 * 2; bytesPerWrite *= 2) {
+            Log.i("------","--------------------------");
+            Log.i("BYTES PER WRITE", String.valueOf(bytesPerWrite));
+            Log.i("------","--------------------------");
+            long totalBytes = 12 * 10000000;
 
+            if(bytesPerWrite < 10) {
+                //account for the massive amount of time it takes for this shit to run
+                totalBytes /= 10;
+            }
+
+            final long numWrites = totalBytes / bytesPerWrite;
+            long bytesWritten = runPebblesTest(numWrites, bytesPerWrite);
+            runSQLiteTest(numWrites, bytesPerWrite);
+            runSQLiteClusterTest(numWrites, bytesPerWrite);
+            runOptimalTest(bytesWritten);
+        }
+    }
+
+    private long runPebblesTest(long numWrites, int bytesPerWrite) {
         //SensorStore time
         SensorStore ds = new SensorStore();
         ds.clear();
@@ -49,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
         long starttime = System.nanoTime();
 
-        for (int i=0; i<num; i++) {
+        for (int i=0; i<numWrites; i++) {
             ds.write(0, xyz);
         }
 
@@ -64,9 +86,13 @@ public class MainActivity extends AppCompatActivity {
         Log.i("mKafka throughput", String.valueOf(throughput*1000) + " MBps");
         Log.i("mKafka offset", Long.toString(ds.offset()));
 
+        return ds.offset();
 
+    }
+
+    private void runSQLiteTest(long numWrites, int bytesPerWrite) {
         //SQLite time
-        MyDB db = new MyDB(getApplicationContext());
+        MyDB db = new MyDB(getApplicationContext(), "DBTEST", DataStream.pagesize);
         db.clear();
 
         try {
@@ -81,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
         long start = System.nanoTime();
 
         //equal buffer size
-        for (int i=0; i<num; i++) {
+        for (int i=0; i<numWrites; i++) {
             db.addRecord(0, value);
         }
         db.close();
@@ -95,7 +121,58 @@ public class MainActivity extends AppCompatActivity {
         Log.i("SQLite throughput", String.valueOf(SQLthpt * 1000) + " MBps");
         Log.i("SQLite offset", Long.toString(db.getBytesWritten()));
 
+    }
 
+    private void runSQLiteClusterTest(long numWrites, int bytesPerWrite) {
+        //SQLite time
+
+        MyDB db1 = new MyDB(getApplicationContext(), "DB1", DataStream.pagesize / 4);
+        MyDB db2 = new MyDB(getApplicationContext(), "DB2", DataStream.pagesize / 4);
+        MyDB db3 = new MyDB(getApplicationContext(), "DB3", DataStream.pagesize / 4);
+        MyDB db4 = new MyDB(getApplicationContext(), "DB4", DataStream.pagesize / 4);
+
+        db1.clear();
+        db2.clear();
+        db3.clear();
+        db4.clear();
+
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (Exception e) {
+            Log.d("TimeException", e.getLocalizedMessage());
+        }
+
+        String value = new String(new char[bytesPerWrite]);
+
+        long start = System.nanoTime();
+
+        //equal buffer size
+        for (int i=0; i<numWrites; i++) {
+            db1.addRecord(0, value);
+            i++;
+            db2.addRecord(0, value);
+            i++;
+            db3.addRecord(0, value);
+            i++;
+            db4.addRecord(0, value);
+        }
+
+        db1.close();
+        db2.close();
+        db3.close();
+        db4.close();
+
+        long end = System.nanoTime();
+
+        double SQLlatency = (((double)(end - start)));
+        double SQLthpt = ((double) db1.getBytesWritten() + db2.getBytesWritten() + db3.getBytesWritten() + db4.getBytesWritten()) / SQLlatency;
+
+        Log.i("SQLiteCluster time", String.valueOf(end - start));
+        Log.i("SQLiteCluster thruput", String.valueOf(SQLthpt * 1000) + " MBps");
+        Log.i("SQLiteCluster offset", Long.toString(db1.getBytesWritten() + db2.getBytesWritten() + db3.getBytesWritten() + db4.getBytesWritten()));
+    }
+
+    private void runOptimalTest(long numBytes) {
         //Optimal SSD time
         try {
             TimeUnit.SECONDS.sleep(3);
@@ -108,12 +185,17 @@ public class MainActivity extends AppCompatActivity {
             File logfile = new File(directory, "optimal");
             RandomAccessFile logRAF = new RandomAccessFile(logfile, "rwd");
 
-            long numBytes = ds.offset();
+//            long numBytes = ds.offset();
 
             int flushSize = Math.min((int) numBytes, 32 * 1024 * 1024);
 
             long startOptimal = System.nanoTime();
+
+            //heap buffer
             byte [] buf = new byte[flushSize];
+
+            //direct byte buffer
+//            byte [] buf = ByteBuffer.allocateDirect(flushSize).array();
             for(long i=0; i<numBytes; i+=flushSize) {
                 logRAF.write(buf, 0, flushSize);
             }
@@ -130,8 +212,9 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e("DataStream", e.getLocalizedMessage());
         }
+    }
 
-
+    private void runOptimalSQLite() {
         //Optimal SQLite time
 //        MyDB db = new MyDB(getApplicationContext());
 //        db.clear();
@@ -159,4 +242,5 @@ public class MainActivity extends AppCompatActivity {
 //        Log.i("SQLite throughput", String.valueOf(SQLthptO * 1000) + " MBps");
 //        Log.i("SQLite offset", Long.toString(db.getBytesWritten()));
     }
+
 }

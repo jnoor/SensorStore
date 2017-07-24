@@ -24,19 +24,18 @@ public class MyDB{
     public final static String _VALUE="value"; // value
 
     private ArrayDeque<DBEntry> buffer;
-    private final static int buffer_size = DataStream.pagesize;
+    private final int buffer_size;
     private int buffer_offset = 0;
     private long total_bytes_written = 0;
     /**
      *
      * @param context
      */
-    public MyDB(Context context){
+    public MyDB(Context context, String DB_NAME, int buf_size){
         buffer = new ArrayDeque<>();
-        dbHelper = new MyDatabaseHelper(context);
+        dbHelper = new MyDatabaseHelper(context, DB_NAME);
         database = dbHelper.getWritableDatabase();
-
-
+        buffer_size = buf_size;
     }
 
     private class DBEntry {
@@ -101,6 +100,7 @@ public class MyDB{
 
     public void close() {
         flush();
+        database.close();
     }
 
     public void clear() {

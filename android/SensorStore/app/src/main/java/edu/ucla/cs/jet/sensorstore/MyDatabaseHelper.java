@@ -11,7 +11,7 @@ import android.util.Log;
 
 public class MyDatabaseHelper extends SQLiteOpenHelper {
 
-    private static final String DATABASE_NAME = "DBName";
+//    private static final String DATABASE_NAME = "DBName";
 
     private static final int DATABASE_VERSION = 2;
 
@@ -23,8 +23,8 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
             "primary key (_id, topic)" +
             ");";
 
-    public MyDatabaseHelper(Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    public MyDatabaseHelper(Context context, String DB_NAME) {
+        super(context, DB_NAME, null, DATABASE_VERSION);
     }
 
     // Method is called during creation of the database
@@ -39,7 +39,7 @@ public class MyDatabaseHelper extends SQLiteOpenHelper {
         Log.w(MyDatabaseHelper.class.getName(),
                 "Upgrading database from version " + oldVersion + " to "
                         + newVersion + ", which will destroy all old data");
-        database.execSQL("DROP TABLE IF EXISTS MyEmployees");
+        database.execSQL("DROP TABLE IF EXISTS BasicTable");
         onCreate(database);
     }
 }
