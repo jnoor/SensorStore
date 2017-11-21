@@ -37,14 +37,16 @@ public class MainActivity extends AppCompatActivity {
 
     public void runBenchmark() {
 
-        for (int bytesPerWrite = 16; bytesPerWrite < 1024 * 1024 * 2; bytesPerWrite *= 2) {
+        for (int bytesPerWrite = 1024 * 1024; bytesPerWrite > 1000; bytesPerWrite /= 2) {
             Log.i("------","--------------------------");
             Log.i("BYTES PER WRITE", String.valueOf(bytesPerWrite));
             Log.i("------","--------------------------");
-            long totalBytes = 12 * 10000000;
+            long totalBytes = 12 * 100000000;
 
-            if(bytesPerWrite < 10) {
+            if(bytesPerWrite < 20) {
                 //account for the massive amount of time it takes for this shit to run
+                totalBytes /= 100;
+            } else if (bytesPerWrite < 1000) {
                 totalBytes /= 10;
             }
 
@@ -80,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
         long endtime = System.nanoTime();
 
         double latency = (((double)(endtime - starttime)));
-        double throughput = ((double)ds.offset()) / latency;
+        double throughput = ((double)numWrites * bytesPerWrite) / latency;
 
         Log.i("mKafka time", String.valueOf(endtime - starttime));
         Log.i("mKafka throughput", String.valueOf(throughput*1000) + " MBps");
@@ -168,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
         double SQLthpt = ((double) db1.getBytesWritten() + db2.getBytesWritten() + db3.getBytesWritten() + db4.getBytesWritten()) / SQLlatency;
 
         Log.i("SQLiteCluster time", String.valueOf(end - start));
-        Log.i("SQLiteCluster thruput", String.valueOf(SQLthpt * 1000) + " MBps");
+        Log.i("SQLiteCluster thpt", String.valueOf(SQLthpt * 1000) + " MBps");
         Log.i("SQLiteCluster offset", Long.toString(db1.getBytesWritten() + db2.getBytesWritten() + db3.getBytesWritten() + db4.getBytesWritten()));
     }
 
